@@ -107,7 +107,7 @@ def search_paper_via_query(query, max_paper_num=2, attempt=3, minCitationCount=5
         else:
             attempt -= 1
             response_data = None
-            # print(f"Request failed with status code {response.status_code}: {response.text}")
+            print(f"Request failed with status code {response.status_code}: {response.text}")
             time.sleep(5)
     # except:
         # response_data = None
