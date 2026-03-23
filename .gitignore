@@ -3,3 +3,8 @@ notebooks/
 *.pyc
 database/
 */PKG-INFO
+.env
+*.pyc
+__pycache__/
+results/
+*.log
