@@ -300,35 +300,52 @@ def get_efo_id(disease_name):
         print(f"Failed to connect to OLS API on fuzzy search. Status code: {response.status_code}")
         return None
 
-def search_disease_efo(disease_name, attempts=5):
-    """
-    Searches for the EFO ID of a given disease in the EFO ontology.
+# def search_disease_efo(disease_name, attempts=5):
+#     """
+#     Searches for the EFO ID of a given disease in the EFO ontology.
     
-    Args:
-        disease_name (str): The name of the disease to search for.
+#     Args:
+#         disease_name (str): The name of the disease to search for.
         
-    Returns:
-        str: The EFO or MONDO ID of the disease if found, otherwise None.
-    """
+#     Returns:
+#         str: The EFO or MONDO ID of the disease if found, otherwise None.
+#     """
     
-    # Attempt to query up to 5 times to handle potential issues
-    for attempt in range(attempts):
-        try:
-            # Search for disease entities using the Open Targets platform
-            disease_name = disease_name.replace("_", " ")
-            disease_efo = get_efo_id(disease_name)
-            disease_id = disease_efo.replace(":", "_")
+#     # Attempt to query up to 5 times to handle potential issues
+#     for attempt in range(attempts):
+#         try:
+#             # Search for disease entities using the Open Targets platform
+#             disease_name = disease_name.replace("_", " ")
+#             disease_efo = get_efo_id(disease_name)
+#             disease_id = disease_efo.replace(":", "_")
             
-            # Check if the response contains a valid EFO or MONDO ID
-            if 'EFO' in disease_id or 'MONDO' in disease_id:
-                return disease_id
-        except Exception as e:
-            print(f"[Attempt {attempt + 1}/5] Error: {e}")
-            print("[search_disease_efo]: Bad request format or other issue encountered. Retrying...")
+#             # Check if the response contains a valid EFO or MONDO ID
+#             if 'EFO' in disease_id or 'MONDO' in disease_id:
+#                 return disease_id
+#         except Exception as e:
+#             print(f"[Attempt {attempt + 1}/5] Error: {e}")
+#             print("[search_disease_efo]: Bad request format or other issue encountered. Retrying...")
     
-    # Return None if a valid ID was not found after 5 attempts
-    print(f"[search_disease_efo]: Failed to find EFO or MONDO ID for '{disease_name}' after {attempts} attempts.")
-    return None
+#     # Return None if a valid ID was not found after 5 attempts
+#     print(f"[search_disease_efo]: Failed to find EFO or MONDO ID for '{disease_name}' after {attempts} attempts.")
+#     return None
+
+def search_disease_efo(disease_name):
+    """
+    Finds the ID Open Targets uses for a disease. 
+    Bypasses OLS to avoid version mismatch issues.
+    """
+    try:
+        # Use your existing search_disease_open_target function
+        entities = search_disease_open_target(disease_name)
+        if not entities:
+            return None
+        
+        # Take the top hit - OT IDs already use underscores (e.g., EFO_0000641)
+        return entities[0]['id']
+    except Exception as e:
+        print(f"[search_disease_efo] Search failed for {disease_name}: {e}")
+        return None
 
 
 def compare_strings(str1, str2):
@@ -336,85 +353,230 @@ def compare_strings(str1, str2):
     return matcher.ratio()
 
 
-def load_disease_targets(disease_name, data_dir=None, attributes=["otGeneticsPortal", "chembl"], use_api=True, max_retries=5):
-    """
-    Load the disease-associated targets from OpenTargets API or local JSON file.
+# def load_disease_targets(disease_name, data_dir=None, attributes=["otGeneticsPortal", "chembl"], use_api=True, max_retries=5):
+#     """
+#     Load the disease-associated targets from OpenTargets API or local JSON file.
 
-    Parameters:
-        disease_name (str): The name of the disease.
-        data_dir (str): The directory containing disease target data. Only used if use_api=False.
-        attributes (list): List of attributes to filter targets. 
-                          For API: filters by datasource types (e.g., "ot_genetics_portal", "chembl")
-                          For local: filters by JSON field names (e.g., "otGeneticsPortal", "chembl")
-        use_api (bool): If True, retrieve data from OpenTargets API. If False, use local JSON files.
-        max_retries (int): Maximum number of retry attempts for API calls.
+#     Parameters:
+#         disease_name (str): The name of the disease.
+#         data_dir (str): The directory containing disease target data. Only used if use_api=False.
+#         attributes (list): List of attributes to filter targets. 
+#                           For API: filters by datasource types (e.g., "ot_genetics_portal", "chembl")
+#                           For local: filters by JSON field names (e.g., "otGeneticsPortal", "chembl")
+#         use_api (bool): If True, retrieve data from OpenTargets API. If False, use local JSON files.
+#         max_retries (int): Maximum number of retry attempts for API calls.
 
-    Returns:
-        set: A set of gene symbols associated with the disease.
-    """
-    if use_api:
-        return _load_disease_targets_from_api(disease_name, attributes, max_retries)
-    else:
-        return _load_disease_targets_from_local(disease_name, data_dir, attributes)
+#     Returns:
+#         set: A set of gene symbols associated with the disease.
+#     """
+#     if use_api:
+#         return _load_disease_targets_from_api(disease_name, attributes, max_retries)
+#     else:
+#         return _load_disease_targets_from_local(disease_name, data_dir, attributes)
 
 
-def _load_disease_targets_from_api(disease_name, attributes=["otGeneticsPortal", "chembl"], max_retries=5):
+# def _load_disease_targets_from_api(disease_name, attributes=["otGeneticsPortal", "chembl"], max_retries=5):
+#     """
+#     Load disease-associated targets from OpenTargets GraphQL API.
+    
+#     Parameters:
+#         disease_name (str): The name of the disease.
+#         attributes (list): List of datasource types to filter targets.
+#         max_retries (int): Maximum number of retry attempts.
+    
+#     Returns:
+#         set: A set of gene symbols associated with the disease.
+#     """
+#     # Get the EFO/MONDO ID for the disease
+#     disease_efo = search_disease_efo(disease_name)
+#     if disease_efo is None:
+#         raise ValueError(f"[load_disease_targets] Could not find EFO/MONDO ID for disease: {disease_name}")
+    
+#     print(f"[load_disease_targets] Querying OpenTargets API for disease: {disease_name} ({disease_efo})")
+    
+#     # Convert attribute names to match OpenTargets datasource format
+#     # Map common attribute names to OpenTargets datasource IDs
+#     # Actual API datasource IDs: genetic_association, genetic_literature, known_drug, 
+#     # literature, rna_expression, animal_model, somatic_mutation, etc.
+#     datasource_mapping = {
+#         "otGeneticsPortal": "genetic_association",
+#         "chembl": "known_drug",
+#         "europepmc": "literature",
+#         "expression_atlas": "rna_expression",
+#         "intogen": "somatic_mutation",
+#         "literature": "literature",
+#         "genetic_association": "genetic_association",
+#         "genetic_literature": "genetic_literature",
+#         "known_drug": "known_drug",
+#         "animal_model": "animal_model",
+#         "rna_expression": "rna_expression",
+#         "somatic_mutation": "somatic_mutation"
+#     }
+    
+#     # Normalize attributes
+#     normalized_attributes = []
+#     for attr in attributes:
+#         if attr in datasource_mapping:
+#             normalized_attributes.append(datasource_mapping[attr])
+#         else:
+#             normalized_attributes.append(attr.lower())
+    
+#     # GraphQL query to get disease-target associations
+#     query = """
+#     query diseaseTargets($efoId: String!, $size: Int!, $index: Int!) {
+#         disease(efoId: $efoId) {
+#             id
+#             name
+#             associatedTargets(page: {size: $size, index: $index}) {
+#                 count
+#                 rows {
+#                     target {
+#                         id
+#                         approvedSymbol
+#                     }
+#                     score
+#                     datatypeScores {
+#                         id
+#                         score
+#                     }
+#                 }
+#             }
+#         }
+#     }
+#     """
+    
+#     # Implement pagination (API max page size is 3000)
+#     page_size = 3000
+#     page_index = 0
+#     target_set = set()
+#     total_count = None
+    
+#     while True:
+#         # Use the EFO ID as-is (with underscores, not colons)
+#         variables = {
+#             "efoId": disease_efo,
+#             "size": page_size,
+#             "index": page_index
+#         }
+        
+#         # Retry logic for API calls
+#         success = False
+#         for attempt in range(max_retries):
+#             try:
+#                 response = requests.post(
+#                     base_url,
+#                     json={"query": query, "variables": variables},
+#                     timeout=30
+#                 )
+                
+#                 # Check response before raising for status to see error details
+#                 if response.status_code != 200:
+#                     try:
+#                         error_detail = response.json()
+#                         print(f"[load_disease_targets] API Error Detail: {json.dumps(error_detail, indent=2)}")
+#                     except:
+#                         print(f"[load_disease_targets] API Error: {response.text}")
+                
+#                 response.raise_for_status()
+                
+#                 api_response = response.json()
+                
+#                 # Check for errors in the GraphQL response
+#                 if "errors" in api_response:
+#                     print(f"[load_disease_targets] GraphQL errors: {api_response['errors']}")
+#                     raise ValueError(f"GraphQL query returned errors: {api_response['errors']}")
+                
+#                 # Extract disease data
+#                 disease_data = api_response.get("data", {}).get("disease")
+#                 if not disease_data:
+#                     raise ValueError(f"[load_disease_targets] No disease data found for {disease_name} ({disease_efo})")
+                
+#                 associated_targets = disease_data.get("associatedTargets", {})
+#                 rows = associated_targets.get("rows", [])
+#                 total_count = associated_targets.get("count", 0)
+                
+#                 if page_index == 0:
+#                     print(f"[load_disease_targets] Found {total_count} total target associations from API")
+                
+#                 # Filter targets based on attributes if specified
+#                 if attributes and len(attributes) > 0:
+#                     for row in rows:
+#                         datatype_scores = row.get("datatypeScores", [])
+#                         # Check if any of the specified datasources have a score
+#                         has_relevant_datasource = False
+#                         for ds in datatype_scores:
+#                             datasource_id = ds.get("id", "").lower()
+#                             score = ds.get("score", 0)
+#                             if any(attr in datasource_id for attr in normalized_attributes) and score > 0:
+#                                 has_relevant_datasource = True
+#                                 break
+                        
+#                         if has_relevant_datasource:
+#                             symbol = row.get("target", {}).get("approvedSymbol")
+#                             if symbol:
+#                                 target_set.add(symbol)
+#                 else:
+#                     # If no attributes specified, return all targets with any association
+#                     for row in rows:
+#                         symbol = row.get("target", {}).get("approvedSymbol")
+#                         if symbol and row.get("score", 0) > 0:
+#                             target_set.add(symbol)
+                
+#                 success = True
+#                 break
+                
+#             except requests.exceptions.RequestException as e:
+#                 print(f"[load_disease_targets] Attempt {attempt + 1}/{max_retries} - Network error: {e}")
+#                 if attempt == max_retries - 1:
+#                     raise ValueError(f"[load_disease_targets] Failed to retrieve data from OpenTargets API after {max_retries} attempts: {e}")
+#             except Exception as e:
+#                 print(f"[load_disease_targets] Attempt {attempt + 1}/{max_retries} - Error: {e}")
+#                 if attempt == max_retries - 1:
+#                     raise ValueError(f"[load_disease_targets] Failed to process API response after {max_retries} attempts: {e}")
+        
+#         if not success:
+#             break
+        
+#         # Check if we've fetched all pages
+#         if len(rows) < page_size or (page_index + 1) * page_size >= total_count:
+#             break
+        
+#         page_index += 1
+#         print(f"[load_disease_targets] Fetching page {page_index + 1} (retrieved {len(target_set)} targets so far)...")
+    
+#     print(f"[load_disease_targets] Retrieved {len(target_set)} targets from OpenTargets API after filtering")
+#     return target_set
+
+def load_disease_targets_from_api(disease_name, attributes=["otGeneticsPortal", "chembl"], max_retries=5):
     """
-    Load disease-associated targets from OpenTargets GraphQL API.
-    
-    Parameters:
-        disease_name (str): The name of the disease.
-        attributes (list): List of datasource types to filter targets.
-        max_retries (int): Maximum number of retry attempts.
-    
-    Returns:
-        set: A set of gene symbols associated with the disease.
+    Load disease-associated targets using Open Targets' specific internal IDs.
     """
-    # Get the EFO/MONDO ID for the disease
-    disease_efo = search_disease_efo(disease_name)
-    if disease_efo is None:
-        raise ValueError(f"[load_disease_targets] Could not find EFO/MONDO ID for disease: {disease_name}")
-    
-    print(f"[load_disease_targets] Querying OpenTargets API for disease: {disease_name} ({disease_efo})")
-    
-    # Convert attribute names to match OpenTargets datasource format
-    # Map common attribute names to OpenTargets datasource IDs
-    # Actual API datasource IDs: genetic_association, genetic_literature, known_drug, 
-    # literature, rna_expression, animal_model, somatic_mutation, etc.
+    # 1. Get the ID directly from Open Targets search
+    disease_id = search_disease_efo(disease_name)
+    if not disease_id:
+        raise ValueError(f"Open Targets could not resolve disease name: {disease_name}")
+
+    print(f"[load_disease_targets] Target ID: {disease_id} | Searching for: {disease_name}")
+
+    # 2. Map attributes to Open Targets Datasource/Datatype IDs
+    # Note: 'otGeneticsPortal' maps to the 'genetic_association' data type
     datasource_mapping = {
         "otGeneticsPortal": "genetic_association",
         "chembl": "known_drug",
         "europepmc": "literature",
-        "expression_atlas": "rna_expression",
-        "intogen": "somatic_mutation",
-        "literature": "literature",
-        "genetic_association": "genetic_association",
-        "genetic_literature": "genetic_literature",
-        "known_drug": "known_drug",
-        "animal_model": "animal_model",
-        "rna_expression": "rna_expression",
-        "somatic_mutation": "somatic_mutation"
+        "expression_atlas": "rna_expression"
     }
     
-    # Normalize attributes
-    normalized_attributes = []
-    for attr in attributes:
-        if attr in datasource_mapping:
-            normalized_attributes.append(datasource_mapping[attr])
-        else:
-            normalized_attributes.append(attr.lower())
-    
-    # GraphQL query to get disease-target associations
+    normalized_filters = [datasource_mapping.get(a, a.lower()) for a in attributes]
+
+    # 3. GraphQL query (Optimized for V4)
     query = """
     query diseaseTargets($efoId: String!, $size: Int!, $index: Int!) {
         disease(efoId: $efoId) {
-            id
-            name
             associatedTargets(page: {size: $size, index: $index}) {
                 count
                 rows {
                     target {
-                        id
                         approvedSymbol
                     }
                     score
@@ -427,110 +589,58 @@ def _load_disease_targets_from_api(disease_name, attributes=["otGeneticsPortal",
         }
     }
     """
-    
-    # Implement pagination (API max page size is 3000)
+
+    target_set = set()
     page_size = 3000
     page_index = 0
-    target_set = set()
-    total_count = None
-    
+
     while True:
-        # Use the EFO ID as-is (with underscores, not colons)
-        variables = {
-            "efoId": disease_efo,
-            "size": page_size,
-            "index": page_index
-        }
+        variables = {"efoId": disease_id, "size": page_size, "index": page_index}
         
-        # Retry logic for API calls
-        success = False
         for attempt in range(max_retries):
             try:
-                response = requests.post(
-                    base_url,
-                    json={"query": query, "variables": variables},
-                    timeout=30
-                )
-                
-                # Check response before raising for status to see error details
-                if response.status_code != 200:
-                    try:
-                        error_detail = response.json()
-                        print(f"[load_disease_targets] API Error Detail: {json.dumps(error_detail, indent=2)}")
-                    except:
-                        print(f"[load_disease_targets] API Error: {response.text}")
-                
+                response = requests.post(base_url, json={"query": query, "variables": variables}, timeout=30)
                 response.raise_for_status()
-                
-                api_response = response.json()
-                
-                # Check for errors in the GraphQL response
-                if "errors" in api_response:
-                    print(f"[load_disease_targets] GraphQL errors: {api_response['errors']}")
-                    raise ValueError(f"GraphQL query returned errors: {api_response['errors']}")
-                
-                # Extract disease data
-                disease_data = api_response.get("data", {}).get("disease")
+                data = response.json()
+
+                if "errors" in data:
+                    print(f"GraphQL Errors: {data['errors']}")
+                    break # Usually a query error, retrying won't help
+
+                # Drill down into the response
+                disease_data = data.get("data", {}).get("disease")
                 if not disease_data:
-                    raise ValueError(f"[load_disease_targets] No disease data found for {disease_name} ({disease_efo})")
+                    # If ID was found but disease object is null, the ID is likely stale in their index
+                    print(f"Warning: ID {disease_id} returned no object in GraphQL. It may have been merged.")
+                    return set()
+
+                assoc = disease_data.get("associatedTargets", {})
+                rows = assoc.get("rows", [])
+                total = assoc.get("count", 0)
+
+                # Filter and add to set
+                for row in rows:
+                    symbol = row['target']['approvedSymbol']
+                    # Check if any requested datatype has a non-zero score
+                    if any(ds['id'] in normalized_filters and ds['score'] > 0 for ds in row.get('datatypeScores', [])):
+                        target_set.add(symbol)
                 
-                associated_targets = disease_data.get("associatedTargets", {})
-                rows = associated_targets.get("rows", [])
-                total_count = associated_targets.get("count", 0)
+                # Check pagination
+                if len(rows) < page_size or (page_index + 1) * page_size >= total:
+                    print(f"[load_disease_targets] Successfully retrieved {len(target_set)} filtered targets.")
+                    return target_set
                 
-                if page_index == 0:
-                    print(f"[load_disease_targets] Found {total_count} total target associations from API")
-                
-                # Filter targets based on attributes if specified
-                if attributes and len(attributes) > 0:
-                    for row in rows:
-                        datatype_scores = row.get("datatypeScores", [])
-                        # Check if any of the specified datasources have a score
-                        has_relevant_datasource = False
-                        for ds in datatype_scores:
-                            datasource_id = ds.get("id", "").lower()
-                            score = ds.get("score", 0)
-                            if any(attr in datasource_id for attr in normalized_attributes) and score > 0:
-                                has_relevant_datasource = True
-                                break
-                        
-                        if has_relevant_datasource:
-                            symbol = row.get("target", {}).get("approvedSymbol")
-                            if symbol:
-                                target_set.add(symbol)
-                else:
-                    # If no attributes specified, return all targets with any association
-                    for row in rows:
-                        symbol = row.get("target", {}).get("approvedSymbol")
-                        if symbol and row.get("score", 0) > 0:
-                            target_set.add(symbol)
-                
-                success = True
-                break
-                
-            except requests.exceptions.RequestException as e:
-                print(f"[load_disease_targets] Attempt {attempt + 1}/{max_retries} - Network error: {e}")
-                if attempt == max_retries - 1:
-                    raise ValueError(f"[load_disease_targets] Failed to retrieve data from OpenTargets API after {max_retries} attempts: {e}")
+                page_index += 1
+                break # Success, move to next page
+
             except Exception as e:
-                print(f"[load_disease_targets] Attempt {attempt + 1}/{max_retries} - Error: {e}")
                 if attempt == max_retries - 1:
-                    raise ValueError(f"[load_disease_targets] Failed to process API response after {max_retries} attempts: {e}")
-        
-        if not success:
-            break
-        
-        # Check if we've fetched all pages
-        if len(rows) < page_size or (page_index + 1) * page_size >= total_count:
-            break
-        
-        page_index += 1
-        print(f"[load_disease_targets] Fetching page {page_index + 1} (retrieved {len(target_set)} targets so far)...")
-    
-    print(f"[load_disease_targets] Retrieved {len(target_set)} targets from OpenTargets API after filtering")
+                    print(f"Failed after {max_retries} attempts: {e}")
+                    return target_set
+                continue
+
     return target_set
-
-
+    
 def _load_disease_targets_from_local(disease_name, data_dir=None, attributes=["otGeneticsPortal", "chembl"]):
     """
     Load disease-associated targets from local JSON file (legacy method).
@@ -623,3 +733,5 @@ def get_gene_synonyms(gene_name, species="Homo sapiens"):
         return synonyms.strip("'").split(", ")
     else:
         return None
+
+
